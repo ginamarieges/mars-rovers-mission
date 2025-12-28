@@ -1,12 +1,6 @@
 <script setup lang="ts">
+import { Direction, Position } from '@/types/Rover/types';
 import { computed, ref } from 'vue';
-
-type Direction = 'N' | 'E' | 'S' | 'W';
-
-type Position = {
-    x: number;
-    y: number;
-};
 
 const props = defineProps<{
     gridSize: number;
@@ -16,7 +10,6 @@ const props = defineProps<{
 const roverPosition = ref<Position>({ x: 0, y: 0 });
 const roverDirection = ref<Direction>('N');
 const commandsInput = ref<string>('');
-
 const obstacles = ref<Map<string, true>>(new Map());
 
 function positionKey(position: Position): string {
@@ -35,7 +28,6 @@ function toggleObstacle(position: Position): void {
         return;
     }
 
-    // No permitir obstáculo donde está el rover
     if (position.x === roverPosition.value.x && position.y === roverPosition.value.y) {
         return;
     }
@@ -90,15 +82,15 @@ const gridCells = computed(() => {
                     type="button"
                     class="flex aspect-square items-center justify-center rounded-sm border text-xs select-none"
                     :class="{
-                        'bg-gray-200': isObstacle(cell),
-                        'bg-transparent': !isObstacle(cell),
+                        'bg-transparent': true,
                         'outline outline-2 outline-blue-500': cell.x === roverPosition.x && cell.y === roverPosition.y,
                     }"
                     @click="toggleObstacle(cell)"
                 >
-                    <span v-if="cell.x === roverPosition.x && cell.y === roverPosition.y" class="text-lg">
+                    <span v-if="cell.x === roverPosition.x && cell.y === roverPosition.y" class="text-xl">
                         {{ roverArrow }}
                     </span>
+                    <img v-else-if="isObstacle(cell)" src="/images/obstacle.png" alt="Obstacle" class="pointer-events-none h-15 w-15" />
                 </button>
             </div>
 
