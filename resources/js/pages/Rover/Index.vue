@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { Direction, ExecuteRoverResponse, Obstacle, Position, ViewportOrigin } from '@/types/Rover/types';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 const props = defineProps<{
     gridSize: number;
@@ -15,6 +16,9 @@ const isExecuting = ref<boolean>(false);
 const executionErrorMessage = ref<string | null>(null);
 const abortedMessage = ref<string | null>(null);
 const viewportOrigin = ref<ViewportOrigin>({ x: 0, y: 0 });
+const isHowToModalOpen = ref<boolean>(false);
+const howToModalContainerElement = ref<HTMLDivElement | null>(null);
+
 function centerViewportOn(position: Position): void {
     const halfViewport = Math.floor(props.gridSize / 2);
 
@@ -26,7 +30,19 @@ function centerViewportOn(position: Position): void {
         y: clamp(position.y - halfViewport, 0, maxOriginY),
     };
 }
+
 centerViewportOn(roverPosition.value);
+
+async function openHowToModal(): Promise<void> {
+    isHowToModalOpen.value = true;
+    await nextTick();
+    howToModalContainerElement.value?.focus();
+}
+
+function closeHowToModal(): void {
+    isHowToModalOpen.value = false;
+    document.body.classList.remove('overflow-hidden');
+}
 
 function positionKey(position: Position): string {
     return `${position.x},${position.y}`;
@@ -178,13 +194,16 @@ function clamp(value: number, min: number, max: number): number {
                 </p>
                 <button class="rounded bg-black px-4 py-2 text-white" type="button" :disabled="isExecuting" @click="executeCommands">Execute</button>
             </div>
-            <div class="flex justify-center gap-4 text-gray-500">
-                <span>F : Forward</span>
-                <span>L : Left</span>
-                <span>R : Right</span>
+            <div class="flex justify-center pt-4">
+                <button
+                    type="button"
+                    class="rounded bg-white/80 px-4 py-2 text-sm font-medium text-black shadow hover:bg-white"
+                    @click="openHowToModal"
+                >
+                    How to opperate?
+                </button>
             </div>
         </section>
-
         <section class="space-y-2">
             <div class="text-sm text-gray-600">Rover position: ({{ roverPosition.x }}, {{ roverPosition.y }}) {{ roverDirection }}</div>
 
@@ -200,7 +219,7 @@ function clamp(value: number, min: number, max: number): number {
                     }"
                     @click="toggleObstacle(cell)"
                 >
-                    <span v-if="cell.x === roverPosition.x && cell.y === roverPosition.y" class="text-xl">
+                    <span v-if="cell.x === roverPosition.x && cell.y === roverPosition.y" class="md:text-xl">
                         {{ roverArrow }}
                     </span>
                     <img v-else-if="isObstacle(cell)" src="/images/obstacle.png" alt="Obstacle" class="pointer-events-none h-fit w-fit" />
@@ -209,5 +228,6 @@ function clamp(value: number, min: number, max: number): number {
 
             <p class="text-xs text-gray-500">Click cells to add obstacles</p>
         </section>
+        <Modal :isOpen="isHowToModalOpen" @close="closeHowToModal" />
     </div>
 </template>
