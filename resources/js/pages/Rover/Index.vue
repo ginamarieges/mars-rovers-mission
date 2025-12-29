@@ -12,20 +12,50 @@ const roverPosition = ref<Position>({ x: 0, y: 0 });
 const roverDirection = ref<Direction>('N');
 const commandsInput = ref<string>('');
 const obstacles = ref<Map<string, true>>(new Map());
-
 const isExecuting = ref<boolean>(false);
 const executionErrorMessage = ref<string | null>(null);
 const abortedMessage = ref<string | null>(null);
-
+const isMobile = computed<boolean>(() => viewportWidth.value < 768);
+const isTablet = computed<boolean>(() => viewportWidth.value >= 768 && viewportWidth.value < 1280);
 const viewportOrigin = ref<ViewportOrigin>({ x: 0, y: 0 });
-
+const viewportWidth = ref<number>(window.innerWidth);
 const isHowToModalOpen = ref<boolean>(false);
 
-const isMobile = ref<boolean>(window.innerWidth < 768);
+const displayGridColumns = computed<number>(() => {
+    if (isMobile.value) return 10;
+    if (isTablet.value) return 20;
+    return 30;
+});
+const displayGridRows = computed<number>(() => {
+    if (isMobile.value) return 10;
+    if (isTablet.value) return 12;
+    return 10;
+});
+const roverArrow = computed<string>(() => {
+    if (roverDirection.value === 'N') return '↑';
+    if (roverDirection.value === 'E') return '→';
+    if (roverDirection.value === 'S') return '↓';
+    return '←';
+});
+const gridCells = computed<Position[]>(() => {
+    const cells: Position[] = [];
+
+    for (let localY = displayGridRows.value - 1; localY >= 0; localY--) {
+        for (let localX = 0; localX < displayGridColumns.value; localX++) {
+            cells.push({
+                x: viewportOrigin.value.x + localX,
+                y: viewportOrigin.value.y + localY,
+            });
+        }
+    }
+
+    return cells;
+});
 
 function handleResize(): void {
-    isMobile.value = window.innerWidth < 768;
+    viewportWidth.value = window.innerWidth;
 }
+
 function worldBorderClasses(cell: Position): Record<string, boolean> {
     return {
         'border-l-2 border-black': cell.x === 0,
@@ -34,18 +64,6 @@ function worldBorderClasses(cell: Position): Record<string, boolean> {
         'border-t-2 border-black': cell.y === props.worldSize - 1,
     };
 }
-
-onMounted(() => {
-    window.addEventListener('resize', handleResize);
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleResize);
-});
-
-const displayGridSize = computed<number>(() => {
-    return isMobile.value ? 10 : props.gridSize;
-});
 
 function openHowToModal(): void {
     isHowToModalOpen.value = true;
@@ -60,14 +78,15 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function centerViewportOn(position: Position): void {
-    const halfViewport = Math.floor(displayGridSize.value / 2);
+    const halfColumns = Math.floor(displayGridColumns.value / 2);
+    const halfRows = Math.floor(displayGridRows.value / 2);
 
-    const maxOriginX = props.worldSize - displayGridSize.value;
-    const maxOriginY = props.worldSize - displayGridSize.value;
+    const maxOriginX = props.worldSize - displayGridColumns.value;
+    const maxOriginY = props.worldSize - displayGridRows.value;
 
     viewportOrigin.value = {
-        x: clamp(position.x - halfViewport, 0, maxOriginX),
-        y: clamp(position.y - halfViewport, 0, maxOriginY),
+        x: clamp(position.x - halfColumns, 0, maxOriginX),
+        y: clamp(position.y - halfRows, 0, maxOriginY),
     };
 }
 
@@ -95,28 +114,6 @@ function toggleObstacle(position: Position): void {
 
     obstacles.value.set(key, true);
 }
-
-const roverArrow = computed<string>(() => {
-    if (roverDirection.value === 'N') return '↑';
-    if (roverDirection.value === 'E') return '→';
-    if (roverDirection.value === 'S') return '↓';
-    return '←';
-});
-
-const gridCells = computed<Position[]>(() => {
-    const cells: Position[] = [];
-
-    for (let localY = displayGridSize.value - 1; localY >= 0; localY--) {
-        for (let localX = 0; localX < displayGridSize.value; localX++) {
-            cells.push({
-                x: viewportOrigin.value.x + localX,
-                y: viewportOrigin.value.y + localY,
-            });
-        }
-    }
-
-    return cells;
-});
 
 function obstaclesToArray(): Obstacle[] {
     const obstacleArray: Obstacle[] = [];
@@ -199,21 +196,27 @@ async function executeCommands(): Promise<void> {
         isExecuting.value = false;
     }
 }
+
+onMounted(() => {
+    window.addEventListener('resize', handleResize);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <template>
     <div class="min-h-screen space-y-6 bg-linear-to-t from-[#f53b3b] to-[#f5975b] p-6 md:px-20 md:pb-20">
-        <header class="space-y-3">
+        <header>
             <h1 class="text-center text-5xl font-semibold sm:text-6xl md:text-4xl">Mars Rover Mission</h1>
             <p class="text-center text-sm md:text-base">
-                You are seeing {{ displayGridSize }}×{{ displayGridSize }}. This world is 200×200 (0..199).
+                You are seeing {{ displayGridColumns }}×{{ displayGridRows }}. This world is 200×200 (0..199).
             </p>
         </header>
-
         <section class="flex flex-col gap-3">
             <div class="flex flex-col items-center justify-center gap-3 md:flex-row">
                 <input v-model="commandsInput" type="text" placeholder="Commands e.g. FFRFFL" class="w-full max-w-md rounded border px-3 py-2" />
-
                 <button
                     class="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
                     type="button"
@@ -223,17 +226,14 @@ async function executeCommands(): Promise<void> {
                     {{ isExecuting ? 'Executing…' : 'Execute' }}
                 </button>
             </div>
-
             <div class="flex flex-col items-center gap-1">
                 <p v-if="executionErrorMessage" class="text-sm text-red-600">
                     {{ executionErrorMessage }}
                 </p>
-
                 <p v-if="abortedMessage" class="text-sm text-amber-800">
                     {{ abortedMessage }}
                 </p>
             </div>
-
             <div class="flex justify-center pt-2">
                 <button
                     type="button"
@@ -244,12 +244,15 @@ async function executeCommands(): Promise<void> {
                 </button>
             </div>
         </section>
-
-        <section class="space-y-2">
+        <section>
             <div class="text-sm text-gray-700">Rover position: ({{ roverPosition.x }}, {{ roverPosition.y }}) {{ roverDirection }}</div>
-
             <div class="mx-auto w-full">
-                <div class="grid gap-[1px]" :style="{ gridTemplateColumns: `repeat(${displayGridSize}, minmax(0, 1fr))` }">
+                <div
+                    class="grid gap-[1px]"
+                    :style="{
+                        gridTemplateColumns: `repeat(${displayGridColumns}, minmax(0, 1fr))`,
+                    }"
+                >
                     <button
                         v-for="cell in gridCells"
                         :key="`${cell.x}-${cell.y}`"
@@ -272,7 +275,6 @@ async function executeCommands(): Promise<void> {
                 </div>
             </div>
         </section>
-
         <Modal :isOpen="isHowToModalOpen" @close="closeHowToModal" />
     </div>
 </template>
