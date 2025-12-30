@@ -242,10 +242,8 @@ onBeforeUnmount(() => {
 <template>
     <div class="min-h-screen space-y-6 bg-linear-to-t from-[#f53b3b] to-[#f5975b] p-6 md:px-20 md:pb-20">
         <header>
-            <h1 class="text-center text-5xl font-semibold sm:text-6xl md:text-4xl">Mars Rover Mission</h1>
-            <p class="text-center text-sm md:text-base">
-                You are seeing {{ displayGridColumns }}×{{ displayGridRows }}. This world is 200×200 (0..199).
-            </p>
+            <h1 class="pt-4 text-center text-5xl font-semibold sm:text-6xl md:text-6xl">Mars Rover Mission</h1>
+            <p class="text-center text-sm md:text-base">You are seeing {{ displayGridColumns }}×{{ displayGridRows }}. This world is 200×200.</p>
         </header>
         <section class="flex flex-col gap-3">
             <div class="flex flex-col items-center justify-center gap-3 md:flex-row">
