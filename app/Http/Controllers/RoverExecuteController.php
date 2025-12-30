@@ -13,7 +13,19 @@ use App\Domain\Rover\World\ObstacleMap;
 use App\Http\Requests\ExecuteRoverRequest;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * This controller validates input, builds the domain objects,
+ * runs the command processor, and returns a JSON-friendly response for the frontend.
+ */
 final class RoverExecuteController extends Controller {
+    /**
+     * Handles POST /api/rover/execute
+     *
+     * - Receives the validated payload (ExecuteRoverRequest)
+     * - Builds the world (Grid + obstacles) and initial rover state
+     * - Delegates execution to the domain (RoverCommandProcessor)
+     * - Returns the execution result as JSON
+     */
     public function __invoke(ExecuteRoverRequest $request, RoverCommandProcessor $roverCommandProcessor): JsonResponse {
         $validatedPayload = $request->validated();
         $grid = new Grid(width: 200, height: 200);
@@ -26,13 +38,14 @@ final class RoverExecuteController extends Controller {
             direction: Direction::from($validatedPayload['initial']['direction'])
         );
 
+        // Execute commands in the domain layer.
         $executionReport = $roverCommandProcessor->execute(
             roverState: $initialState,
             commands: $validatedPayload['commands'],
             grid: $grid,
             obstacleMap: $obstacleMap
         );
-
+        // Return a JSON respones. We convert the report into a simple array shape.
         return response()->json($this->executionReportToArray($executionReport));
     }
 
@@ -48,6 +61,8 @@ final class RoverExecuteController extends Controller {
             'aborted' => $executionReport->aborted,
             'executedCommands' => $executionReport->executedCommands,
             'obstacle' => $obstaclePosition === null ? null : ['x' => $obstaclePosition->x, 'y' => $obstaclePosition->y],
+            'usedCommands' => $executionReport->usedCommands
         ];
+
     }
 }

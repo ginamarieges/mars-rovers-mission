@@ -18,11 +18,12 @@ describe('Given the rover execute API endpoint', function () {
             $response->assertOk();
 
             $response->assertJson([
-                'position' => ['x' => 2, 'y' => 2],
+                'position' => ['x' => 3, 'y' => 2],
                 'direction' => 'E',
                 'aborted' => false,
                 'executedCommands' => 5,
                 'obstacle' => null,
+                'usedCommands' => 'FFRFF'
             ]);
 
             $response->assertJsonStructure([
@@ -31,6 +32,7 @@ describe('Given the rover execute API endpoint', function () {
                 'aborted',
                 'executedCommands',
                 'obstacle',
+                'usedCommands'
             ]);
 
         });

@@ -7,11 +7,26 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
+/**
+ * Form request used to validate the rover execution endpoint.
+ *
+ * It prepares and validate the incoming request before it reaches the controller.
+ */
+
 class ExecuteRoverRequest extends FormRequest {
+    /**
+     * In this case no authorization logic is needed for this endpoint.
+     * Any request is allowed to execute the rover simulation.
+     */
     public function authorize(): bool {
         return true;
     }
 
+    /**
+     * Normalize input values before validation.
+     *
+     * Commands and direction are converted to uppercase.
+     */
     protected function prepareForValidation() {
         $initial = $this->input('initial', []);
         $commandsValue = $this->input('commands');
@@ -28,6 +43,13 @@ class ExecuteRoverRequest extends FormRequest {
         ]);
     }
 
+     /**
+     * Define the basic validation rules for the request.
+     *
+     * These rules ensure the rover starts inside the world bounds,
+     * uses a valid direction, receives a valid command sequence,
+     * and that all obstacles are well-formed and within the world.
+     */
     public function rules(): array {
         return [
             'initial' => ['required', 'array'],
@@ -42,6 +64,12 @@ class ExecuteRoverRequest extends FormRequest {
         ];
     }
 
+    /**
+     * Run additional validation after the basic rules.
+     *
+     * This check ensures that no obstacle is placed on the rover's
+     * initial position.
+     */
     public function withValidator(Validator $validator) {
         $validator ->after(function (Validator $validator) {
             $initialX = $this->input('initial.x');

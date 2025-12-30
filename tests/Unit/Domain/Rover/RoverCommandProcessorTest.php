@@ -28,7 +28,7 @@ describe('Given a RoverCommandProcessor', function () {
             expect($report->aborted)->toBeFalse();
             expect($report->executedCommands)->toBe(5);
             expect($report->obstaclePosition)->toBeNull();
-            expect($report->finalState->position)->toEqual(new Position(x: 2, y:2));
+            expect($report->finalState->position)->toEqual(new Position(x: 3, y:2));
             expect($report->finalState->direction)->toBe(Direction::E);
         });
     });

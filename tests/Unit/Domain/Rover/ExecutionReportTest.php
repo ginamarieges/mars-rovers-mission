@@ -19,7 +19,8 @@ describe('Given an ExecutionReport', function () {
                 finalState: $finalState,
                 aborted: false,
                 obstaclePosition: null,
-                executedCommands: 5
+                executedCommands: 5,
+                usedCommands:'FFFFF'
             );
 
             expect($report->aborted)->toBeFalse();
@@ -37,7 +38,8 @@ describe('Given an ExecutionReport', function () {
                 finalState: $finalState,
                 aborted: true,
                 obstaclePosition: new Position(x: 0, y: -1),
-                executedCommands: 0
+                executedCommands: 0,
+                usedCommands: ''
             );
 
             expect($report->aborted)->toBeTrue();
@@ -56,7 +58,8 @@ describe('Given an ExecutionReport', function () {
                 finalState: $finalState,
                 aborted: false,
                 obstaclePosition: null,
-                executedCommands: -1
+                executedCommands: -1,
+                usedCommands: ''
             ))->toThrow(InvalidArgumentException::class);
         });
     });
@@ -72,7 +75,8 @@ describe('Given an ExecutionReport', function () {
                 finalState: $finalState,
                 aborted: false,
                 obstaclePosition: new Position(x: 5, y: 5),
-                executedCommands: 2
+                executedCommands: 2,
+                usedCommands: ''
             ))->toThrow(InvalidArgumentException::class);
         });
     });
