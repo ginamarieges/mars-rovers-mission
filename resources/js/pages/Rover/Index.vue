@@ -11,7 +11,42 @@ const props = defineProps<{
 const roverPosition = ref<Position>({ x: 0, y: 0 });
 const roverDirection = ref<Direction>('N');
 const commandsInput = ref<string>('');
-const obstacles = ref<Map<string, true>>(new Map());
+const obstacles = ref<Map<string, true>>(
+    new Map<string, true>([
+        ['5,5', true],
+        ['6,5', true],
+        ['8,3', true],
+        ['2,7', true],
+        ['10,5', true],
+        ['0,5', true],
+        ['1,2', true],
+        ['10,0', true],
+        ['12,8', true],
+        ['18,3', true],
+        ['15,14', true],
+        ['19,7', true],
+        ['22,5', true],
+        ['25,14', true],
+        ['25,0', true],
+        ['23,14', true],
+        ['30,30', true],
+        ['42,17', true],
+        ['60,22', true],
+        ['75,40', true],
+        ['90,10', true],
+        ['110,55', true],
+        ['130,80', true],
+        ['150,20', true],
+        ['170,95', true],
+        ['185,60', true],
+        ['195,180', true],
+        ['10,40', true],
+        ['22,67', true],
+        ['48,90', true],
+        ['88,120', true],
+        ['140,140', true],
+    ]),
+);
 const isExecuting = ref<boolean>(false);
 const executionErrorMessage = ref<string | null>(null);
 const abortedMessage = ref<string | null>(null);
@@ -126,21 +161,19 @@ function obstaclesToArray(): Obstacle[] {
     return obstacleArray;
 }
 
-function normalizeCommandsForUserInput(rawCommands: string): string {
+function normalizeCommands(rawCommands: string): string {
     return rawCommands.trim().toUpperCase();
 }
 
 async function executeCommands(): Promise<void> {
     abortedMessage.value = null;
     executionErrorMessage.value = null;
-
-    const normalizedCommands = normalizeCommandsForUserInput(commandsInput.value);
+    const normalizedCommands = normalizeCommands(commandsInput.value);
 
     if (normalizedCommands.length === 0) {
         executionErrorMessage.value = 'Please enter at least one command (F, L, R).';
         return;
     }
-
     isExecuting.value = true;
 
     try {
