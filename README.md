@@ -75,8 +75,8 @@ tests/
 ### Commands
 
 - **F** → Move forward one cell
-- **L** → Turn left (90°)
-- **R** → Turn right (90°)
+- **L** → Move to the left one cell (90°)
+- **R** → Move to the right one cell (90°)
 
 Commands are sent as a sequence (e.g. `FFRFFL`).
 

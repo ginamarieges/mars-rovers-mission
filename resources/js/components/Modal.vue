@@ -8,7 +8,7 @@
         aria-label="How to use the Mars Rover Mission simulator"
         tabindex="0"
     >
-        <button type="button" class="absolute inset-0 bg-black/60" aria-label="Close modal" @click="close" />
+        <div class="absolute inset-0 bg-black/60" aria-label="Close modal" @click="close"></div>
 
         <div class="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-lg">
             <div class="flex items-start justify-between gap-4 border-b px-4 py-3">
@@ -30,8 +30,8 @@
                     <p>Use these letters to control the rover:</p>
                     <ul class="mt-2 list-disc space-y-1 pl-5">
                         <li><strong>F</strong> — move one step forward</li>
-                        <li><strong>L</strong> — turn left (the rover stays on the same cell)</li>
-                        <li><strong>R</strong> — turn right (the rover stays on the same cell)</li>
+                        <li><strong>L</strong> — move one step to the left</li>
+                        <li><strong>R</strong> — move one step to the right</li>
                     </ul>
                 </div>
 
