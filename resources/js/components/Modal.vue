@@ -8,6 +8,8 @@
         aria-label="How to use the Mars Rover Mission simulator"
         tabindex="0"
     >
+        <div class="absolute inset-0 bg-black/60" aria-label="Close modal" @click="close"></div>
+
         <div class="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-lg">
             <div class="flex items-start justify-between gap-4 border-b px-4 py-3">
                 <h2 class="text-lg font-semibold">How to use this simulator</h2>
