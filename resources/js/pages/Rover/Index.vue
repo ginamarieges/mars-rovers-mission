@@ -46,6 +46,38 @@ const obstacles = ref<Map<string, true>>(
         ['48,90', true],
         ['88,120', true],
         ['140,140', true],
+        ['6,6', true],
+        ['7,6', true],
+        ['10,4', true],
+        ['2,8', true],
+        ['12,6', true],
+        ['0,6', true],
+        ['1,2', true],
+        ['12,0', true],
+        ['14,10', true],
+        ['22,4', true],
+        ['18,17', true],
+        ['23,8', true],
+        ['26,6', true],
+        ['30,17', true],
+        ['30,0', true],
+        ['28,17', true],
+        ['36,36', true],
+        ['50,20', true],
+        ['72,26', true],
+        ['90,48', true],
+        ['108,12', true],
+        ['132,66', true],
+        ['156,96', true],
+        ['180,24', true],
+        ['199,114', true],
+        ['199,72', true],
+        ['199,199', true],
+        ['12,48', true],
+        ['26,80', true],
+        ['58,108', true],
+        ['106,144', true],
+        ['168,168', true],
     ]),
 );
 const isExecuting = ref<boolean>(false);
@@ -89,10 +121,10 @@ function handleResize(): void {
 
 function worldBorderClasses(cell: Position): Record<string, boolean> {
     return {
-        'border-l-2 border-black': cell.x === 0,
-        'border-r-2 border-black': cell.x === props.worldSize - 1,
-        'border-b-2 border-black': cell.y === 0,
-        'border-t-2 border-black': cell.y === props.worldSize - 1,
+        'border-l-4 border-black': cell.x === 0,
+        'border-r-4 border-black': cell.x === props.worldSize - 1,
+        'border-b-4 border-black': cell.y === 0,
+        'border-t-4 border-black': cell.y === props.worldSize - 1,
     };
 }
 
@@ -161,65 +193,91 @@ function normalizeCommands(rawCommands: string): string {
     return rawCommands.trim().toUpperCase();
 }
 
+function getCsrfToken(): string {
+    const csrfMetaElement = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    return csrfMetaElement?.content ?? '';
+}
+
+type ValidationErrorResponse = { errors?: Record<string, string[]> };
+
+async function parseJsonSafely<T>(response: Response): Promise<T | null> {
+    try {
+        return (await response.json()) as T;
+    } catch {
+        return null;
+    }
+}
+
+async function executeRoverRequest(payload: unknown): Promise<ExecuteRoverResponse> {
+    const response = await fetch('/api/rover/execute', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+        const data = await parseJsonSafely<ExecuteRoverResponse>(response);
+        if (!data) {
+            throw new Error('Invalid JSON response');
+        }
+        return data;
+    }
+
+    const errorBody = await parseJsonSafely<ValidationErrorResponse>(response);
+
+    if (response.status === 422 && errorBody?.errors) {
+        const validationMessage = Object.values(errorBody.errors).flat().join(' ');
+        throw new Error(validationMessage);
+    }
+
+    throw new Error(`Request failed with status ${response.status}.`);
+}
+
 async function executeCommands(): Promise<void> {
     abortedMessage.value = null;
     executionErrorMessage.value = null;
+
     const normalizedCommands = normalizeCommands(commandsInput.value);
 
     if (normalizedCommands.length === 0) {
         executionErrorMessage.value = 'Please enter at least one command (F, L, R).';
         return;
     }
+
     isExecuting.value = true;
 
     try {
-        const response = await fetch('/api/rover/execute', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '',
+        const payload = {
+            initial: {
+                x: roverPosition.value.x,
+                y: roverPosition.value.y,
+                direction: roverDirection.value,
             },
-            body: JSON.stringify({
-                initial: {
-                    x: roverPosition.value.x,
-                    y: roverPosition.value.y,
-                    direction: roverDirection.value,
-                },
-                commands: normalizedCommands,
-                obstacles: obstaclesToArray(),
-            }),
-        });
+            commands: normalizedCommands,
+            obstacles: obstaclesToArray(),
+        };
 
-        if (!response.ok) {
-            const responseBody = await response.json().catch(() => null);
-
-            if (response.status === 422 && responseBody?.errors) {
-                executionErrorMessage.value = Object.values(responseBody.errors).flat().join(' ');
-                return;
-            }
-
-            executionErrorMessage.value = `Request failed with status ${response.status}.`;
-            return;
-        }
-
-        const data = (await response.json()) as ExecuteRoverResponse;
+        const data = await executeRoverRequest(payload);
 
         roverPosition.value = { x: data.position.x, y: data.position.y };
         roverDirection.value = data.direction;
 
         centerViewportOn(roverPosition.value);
 
-        if (data.aborted) {
-            abortedMessage.value = data.obstacle ? `Aborted: movement blocked at (${data.obstacle.x}, ${data.obstacle.y}).` : 'Aborted.';
-        } else {
-            abortedMessage.value = null;
-        }
+        abortedMessage.value = data.aborted
+            ? data.obstacle
+                ? `Aborted: movement blocked at (${data.obstacle.x}, ${data.obstacle.y}).`
+                : 'Aborted.'
+            : null;
 
         commandsInput.value = '';
     } catch (error) {
-        executionErrorMessage.value = 'Network error. Please try again.';
+        executionErrorMessage.value = error instanceof Error ? error.message : 'Network error. Please try again.';
         console.error(error);
     } finally {
         isExecuting.value = false;
@@ -244,7 +302,12 @@ onBeforeUnmount(() => {
         </header>
         <section class="flex flex-col gap-3">
             <div class="flex flex-col items-center justify-center gap-3 md:flex-row">
-                <input v-model="commandsInput" type="text" placeholder="Commands e.g. FFRFFL" class="w-full max-w-md rounded border px-3 py-2" />
+                <input
+                    v-model="commandsInput"
+                    type="text"
+                    placeholder="Commands e.g. FFRFFL"
+                    class="w-full max-w-md rounded border px-3 py-2 backdrop-blur-md"
+                />
                 <button
                     class="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
                     type="button"
@@ -255,10 +318,10 @@ onBeforeUnmount(() => {
                 </button>
             </div>
             <div class="flex flex-col items-center gap-1">
-                <p v-if="executionErrorMessage" class="text-sm text-red-600">
+                <p v-if="executionErrorMessage" class="text-sm">
                     {{ executionErrorMessage }}
                 </p>
-                <p v-if="abortedMessage" class="text-sm text-amber-800">
+                <p v-if="abortedMessage" class="text-sm">
                     {{ abortedMessage }}
                 </p>
             </div>
