@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Compass from '@/components/Compass.vue';
 import Modal from '@/components/Modal.vue';
 import { Direction, ExecuteRoverResponse, Obstacle, Position, ViewportOrigin } from '@/types/Rover/types';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -59,19 +60,14 @@ const isHowToModalOpen = ref<boolean>(false);
 const displayGridColumns = computed<number>(() => {
     if (isMobile.value) return 10;
     if (isTablet.value) return 20;
-    return 30;
+    return 25;
 });
 const displayGridRows = computed<number>(() => {
-    if (isMobile.value) return 10;
+    if (isMobile.value) return 12;
     if (isTablet.value) return 12;
     return 10;
 });
-const roverArrow = computed<string>(() => {
-    if (roverDirection.value === 'N') return '↑';
-    if (roverDirection.value === 'E') return '→';
-    if (roverDirection.value === 'S') return '↓';
-    return '←';
-});
+
 const gridCells = computed<Position[]>(() => {
     const cells: Position[] = [];
 
@@ -240,9 +236,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="min-h-screen space-y-6 bg-linear-to-t from-[#f53b3b] to-[#f5975b] p-6 md:px-20 md:pb-20">
+    <div class="relative min-h-screen space-y-6 bg-[url('/images/mars.jpg')] p-8 pb-30 sm:p-10 sm:pb-28 md:p-10 md:pb-30 lg:p-20">
+        <Compass :roverDirection="roverDirection" />
         <header>
-            <h1 class="pt-4 text-center text-5xl font-semibold sm:text-6xl md:text-6xl">Mars Rover Mission</h1>
+            <h1 class="bg-clip-text bg-center pt-4 text-center text-5xl font-extrabold uppercase sm:text-6xl md:text-6xl lg:text-7xl">Mars Rover</h1>
             <p class="text-center text-sm md:text-base">You are seeing {{ displayGridColumns }}×{{ displayGridRows }}. This world is 200×200.</p>
         </header>
         <section class="flex flex-col gap-3">
@@ -266,17 +263,15 @@ onBeforeUnmount(() => {
                 </p>
             </div>
             <div class="flex justify-center pt-2">
-                <button
-                    type="button"
-                    class="rounded bg-white/80 px-4 py-2 text-sm font-medium text-black shadow hover:bg-white"
-                    @click="openHowToModal"
-                >
+                <button type="button" class="rounded bg-black px-4 py-2 text-white disabled:opacity-50" @click="openHowToModal">
                     How to operate?
                 </button>
             </div>
         </section>
         <section>
-            <div class="text-sm text-gray-700">Rover position: ({{ roverPosition.x }}, {{ roverPosition.y }}) {{ roverDirection }}</div>
+            <div class="flex justify-end text-sm text-gray-700">
+                <span>Rover position: ({{ roverPosition.x }}, {{ roverPosition.y }}) {{ roverDirection }}</span>
+            </div>
             <div class="mx-auto w-full">
                 <div
                     class="grid gap-[1px]"
@@ -299,7 +294,7 @@ onBeforeUnmount(() => {
                         @click="toggleObstacle(cell)"
                     >
                         <span v-if="cell.x === roverPosition.x && cell.y === roverPosition.y" class="text-lg md:text-xl">
-                            {{ roverArrow }}
+                            <img src="/images/mars-rover.png" alt="rover icon" />
                         </span>
                         <img v-else-if="isObstacle(cell)" src="/images/obstacle.png" alt="Obstacle" class="pointer-events-none h-fit w-fit" />
                     </button>
