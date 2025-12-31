@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Compass from '@/components/Compass.vue';
 import Modal from '@/components/Modal.vue';
 import { Direction, ExecuteRoverResponse, Obstacle, Position, ViewportOrigin } from '@/types/Rover/types';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -45,6 +46,38 @@ const obstacles = ref<Map<string, true>>(
         ['48,90', true],
         ['88,120', true],
         ['140,140', true],
+        ['6,6', true],
+        ['7,6', true],
+        ['10,4', true],
+        ['2,8', true],
+        ['12,6', true],
+        ['0,6', true],
+        ['1,2', true],
+        ['12,0', true],
+        ['14,10', true],
+        ['22,4', true],
+        ['18,17', true],
+        ['23,8', true],
+        ['26,6', true],
+        ['30,17', true],
+        ['30,0', true],
+        ['28,17', true],
+        ['36,36', true],
+        ['50,20', true],
+        ['72,26', true],
+        ['90,48', true],
+        ['108,12', true],
+        ['132,66', true],
+        ['156,96', true],
+        ['180,24', true],
+        ['199,114', true],
+        ['199,72', true],
+        ['199,199', true],
+        ['12,48', true],
+        ['26,80', true],
+        ['58,108', true],
+        ['106,144', true],
+        ['168,168', true],
     ]),
 );
 const isExecuting = ref<boolean>(false);
@@ -59,19 +92,14 @@ const isHowToModalOpen = ref<boolean>(false);
 const displayGridColumns = computed<number>(() => {
     if (isMobile.value) return 10;
     if (isTablet.value) return 20;
-    return 30;
+    return 25;
 });
 const displayGridRows = computed<number>(() => {
-    if (isMobile.value) return 10;
+    if (isMobile.value) return 12;
     if (isTablet.value) return 12;
     return 10;
 });
-const roverArrow = computed<string>(() => {
-    if (roverDirection.value === 'N') return '↑';
-    if (roverDirection.value === 'E') return '→';
-    if (roverDirection.value === 'S') return '↓';
-    return '←';
-});
+
 const gridCells = computed<Position[]>(() => {
     const cells: Position[] = [];
 
@@ -93,10 +121,10 @@ function handleResize(): void {
 
 function worldBorderClasses(cell: Position): Record<string, boolean> {
     return {
-        'border-l-2 border-black': cell.x === 0,
-        'border-r-2 border-black': cell.x === props.worldSize - 1,
-        'border-b-2 border-black': cell.y === 0,
-        'border-t-2 border-black': cell.y === props.worldSize - 1,
+        'border-l-4 border-black': cell.x === 0,
+        'border-r-4 border-black': cell.x === props.worldSize - 1,
+        'border-b-4 border-black': cell.y === 0,
+        'border-t-4 border-black': cell.y === props.worldSize - 1,
     };
 }
 
@@ -165,65 +193,91 @@ function normalizeCommands(rawCommands: string): string {
     return rawCommands.trim().toUpperCase();
 }
 
+function getCsrfToken(): string {
+    const csrfMetaElement = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    return csrfMetaElement?.content ?? '';
+}
+
+type ValidationErrorResponse = { errors?: Record<string, string[]> };
+
+async function parseJsonSafely<T>(response: Response): Promise<T | null> {
+    try {
+        return (await response.json()) as T;
+    } catch {
+        return null;
+    }
+}
+
+async function executeRoverRequest(payload: unknown): Promise<ExecuteRoverResponse> {
+    const response = await fetch('/api/rover/execute', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+        const data = await parseJsonSafely<ExecuteRoverResponse>(response);
+        if (!data) {
+            throw new Error('Invalid JSON response');
+        }
+        return data;
+    }
+
+    const errorBody = await parseJsonSafely<ValidationErrorResponse>(response);
+
+    if (response.status === 422 && errorBody?.errors) {
+        const validationMessage = Object.values(errorBody.errors).flat().join(' ');
+        throw new Error(validationMessage);
+    }
+
+    throw new Error(`Request failed with status ${response.status}.`);
+}
+
 async function executeCommands(): Promise<void> {
     abortedMessage.value = null;
     executionErrorMessage.value = null;
+
     const normalizedCommands = normalizeCommands(commandsInput.value);
 
     if (normalizedCommands.length === 0) {
         executionErrorMessage.value = 'Please enter at least one command (F, L, R).';
         return;
     }
+
     isExecuting.value = true;
 
     try {
-        const response = await fetch('/api/rover/execute', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '',
+        const payload = {
+            initial: {
+                x: roverPosition.value.x,
+                y: roverPosition.value.y,
+                direction: roverDirection.value,
             },
-            body: JSON.stringify({
-                initial: {
-                    x: roverPosition.value.x,
-                    y: roverPosition.value.y,
-                    direction: roverDirection.value,
-                },
-                commands: normalizedCommands,
-                obstacles: obstaclesToArray(),
-            }),
-        });
+            commands: normalizedCommands,
+            obstacles: obstaclesToArray(),
+        };
 
-        if (!response.ok) {
-            const responseBody = await response.json().catch(() => null);
-
-            if (response.status === 422 && responseBody?.errors) {
-                executionErrorMessage.value = Object.values(responseBody.errors).flat().join(' ');
-                return;
-            }
-
-            executionErrorMessage.value = `Request failed with status ${response.status}.`;
-            return;
-        }
-
-        const data = (await response.json()) as ExecuteRoverResponse;
+        const data = await executeRoverRequest(payload);
 
         roverPosition.value = { x: data.position.x, y: data.position.y };
         roverDirection.value = data.direction;
 
         centerViewportOn(roverPosition.value);
 
-        if (data.aborted) {
-            abortedMessage.value = data.obstacle ? `Aborted: movement blocked at (${data.obstacle.x}, ${data.obstacle.y}).` : 'Aborted.';
-        } else {
-            abortedMessage.value = null;
-        }
+        abortedMessage.value = data.aborted
+            ? data.obstacle
+                ? `Aborted: movement blocked at (${data.obstacle.x}, ${data.obstacle.y}).`
+                : 'Aborted.'
+            : null;
 
         commandsInput.value = '';
     } catch (error) {
-        executionErrorMessage.value = 'Network error. Please try again.';
+        executionErrorMessage.value = error instanceof Error ? error.message : 'Network error. Please try again.';
         console.error(error);
     } finally {
         isExecuting.value = false;
@@ -240,14 +294,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="min-h-screen space-y-6 bg-linear-to-t from-[#f53b3b] to-[#f5975b] p-6 md:px-20 md:pb-20">
+    <div class="relative min-h-screen space-y-6 bg-[url('/images/mars.jpg')] p-8 pb-30 sm:p-10 sm:pb-28 md:p-10 md:pb-30 lg:p-20">
+        <Compass :roverDirection="roverDirection" />
         <header>
-            <h1 class="pt-4 text-center text-5xl font-semibold sm:text-6xl md:text-6xl">Mars Rover Mission</h1>
+            <h1 class="bg-clip-text bg-center pt-4 text-center text-5xl font-extrabold uppercase sm:text-6xl md:text-6xl lg:text-7xl">Mars Rover</h1>
             <p class="text-center text-sm md:text-base">You are seeing {{ displayGridColumns }}×{{ displayGridRows }}. This world is 200×200.</p>
         </header>
         <section class="flex flex-col gap-3">
             <div class="flex flex-col items-center justify-center gap-3 md:flex-row">
-                <input v-model="commandsInput" type="text" placeholder="Commands e.g. FFRFFL" class="w-full max-w-md rounded border px-3 py-2" />
+                <input
+                    v-model="commandsInput"
+                    type="text"
+                    placeholder="Commands e.g. FFRFFL"
+                    class="w-full max-w-md rounded border px-3 py-2 backdrop-blur-md"
+                />
                 <button
                     class="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
                     type="button"
@@ -258,25 +318,23 @@ onBeforeUnmount(() => {
                 </button>
             </div>
             <div class="flex flex-col items-center gap-1">
-                <p v-if="executionErrorMessage" class="text-sm text-red-600">
+                <p v-if="executionErrorMessage" class="text-sm">
                     {{ executionErrorMessage }}
                 </p>
-                <p v-if="abortedMessage" class="text-sm text-amber-800">
+                <p v-if="abortedMessage" class="text-sm">
                     {{ abortedMessage }}
                 </p>
             </div>
             <div class="flex justify-center pt-2">
-                <button
-                    type="button"
-                    class="rounded bg-white/80 px-4 py-2 text-sm font-medium text-black shadow hover:bg-white"
-                    @click="openHowToModal"
-                >
+                <button type="button" class="rounded bg-black px-4 py-2 text-white disabled:opacity-50" @click="openHowToModal">
                     How to operate?
                 </button>
             </div>
         </section>
         <section>
-            <div class="text-sm text-gray-700">Rover position: ({{ roverPosition.x }}, {{ roverPosition.y }}) {{ roverDirection }}</div>
+            <div class="flex justify-end text-sm text-gray-700">
+                <span>Rover position: ({{ roverPosition.x }}, {{ roverPosition.y }}) {{ roverDirection }}</span>
+            </div>
             <div class="mx-auto w-full">
                 <div
                     class="grid gap-[1px]"
@@ -299,7 +357,7 @@ onBeforeUnmount(() => {
                         @click="toggleObstacle(cell)"
                     >
                         <span v-if="cell.x === roverPosition.x && cell.y === roverPosition.y" class="text-lg md:text-xl">
-                            {{ roverArrow }}
+                            <img src="/images/mars-rover.png" alt="rover icon" />
                         </span>
                         <img v-else-if="isObstacle(cell)" src="/images/obstacle.png" alt="Obstacle" class="pointer-events-none h-fit w-fit" />
                     </button>

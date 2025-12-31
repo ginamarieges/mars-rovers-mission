@@ -128,7 +128,8 @@ Commands are sent as a sequence (e.g. `FFRFFL`).
     "direction": "E",
     "aborted": false,
     "executedCommands": 5,
-    "obstacle": null
+    "obstacle": null,
+    "usedCommands": "FFRFF"
 }
 ```
 
@@ -140,10 +141,16 @@ Commands are sent as a sequence (e.g. `FFRFFL`).
 - API behavior is covered by feature tests
 - Tests are written using Pest
 
-Run tests:
+Run backend tests:
 
 ```sh
-php artisan test
+./vendor/bin/pest
+```
+
+Run frontend tests:
+
+```sh
+npm run test:frontend
 ```
 
 ---
@@ -155,15 +162,21 @@ php artisan test
 - PHP 8+
 - Composer
 - Node.js + npm
-- Laravel Herd
+- Laravel Herd (optional)
 
 ### Installation
 
 ```sh
 composer install
-npm install
 cp .env.example .env
 php artisan key:generate
+npm install
+```
+
+### Run the backend if you don't use Herd
+
+```sh
+php artisan serve
 ```
 
 ### Run the app
@@ -173,9 +186,16 @@ npm run dev
 ```
 
 Visit:
+If you use Herd:
 
 ```sh
 http://mars-rover.test
+```
+
+If not:
+
+```sh
+http://127.0.0.1:8000
 ```
 
 ## 🧭 Design principles
